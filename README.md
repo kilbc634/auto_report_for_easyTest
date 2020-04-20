@@ -1,0 +1,2 @@
+# auto_report_for_easyTest
+auto_report_for_easyTest

@@ -120,6 +120,14 @@ class requestLib():
         html = etree.HTML(resp.text)
         return html
 
+    def get_ansPage(self, pageName):
+        '''
+        Get answer page by page name url
+        '''
+        resp = self.__request('get', onlineTestEndPoint + pageName)
+        html = etree.HTML(resp.text)
+        return html
+
     #------------------------------------------------------------------------------------
     # Function Zone
     #------------------------------------------------------------------------------------
@@ -155,7 +163,7 @@ if __name__ == "__main__":
     # start test for qlevel
     # https://easytest.ncut.edu.tw/online_test/etest/elective_gept_exam.aspx?GeptSec=start&qlevel=1001&TestType=3
     print('start for qlevel=' + str(qlevelList[0]))
-    page = client.get_testStart(qlevelList[0])
+    page = client.get_testStart(qlevelList[0])  ## Need to for loop
     # skip/continue all elective_gept_exam.aspx to go to answer page. And check elective_gept_exam.aspx scenario
     for limit in range(10):
         geptSec = page.xpath('//*[@name="GeptSec"]/@value')
@@ -169,5 +177,32 @@ if __name__ == "__main__":
         text = element.xpath('@href')[0]
         ansNum = re.findall("correct.aspx\?Q_Type=(\d+)&", text)[0]
         ansPageUrlList.append('correct{num}.aspx'.format(num=ansNum))
-    print(ansPageUrlList)
     # get all question-answer key value dict from answer page from correct3.aspx page
+    #################################################################### Note #######
+    # q-p = type1 = （聽力） 題目-圖片 選項-無      PS 選項順序不變
+    # a-t = type2 = （聽力） 題目-無   選項-文字
+    # a-p = type3 = （聽力） 題目-無   選項-圖片
+    # a-t = type4 = （閱讀） 題目-文字 選項-文字
+    # a-t = type5 = （文章） 題目-大題 選項-文字
+    # [
+    #   {
+    #       "type": "q-p",
+    #       "img": "xxxxx.jpg",
+    #       "ans": "(C)"
+    #   },
+    #   {
+    #       "type": "a-p",
+    #       "img": "xxxxx-001b.jpg",
+    #   },
+    #   {
+    #       "type": "a-t",
+    #       "text": "Happy nice day.",
+    #   },
+    #   ....
+    # ]
+    #
+    #
+    #
+    #
+    #################################################################### Note #######
+    page = client.get_ansPage(ansPageUrlList[0])  ## Need to for loop

@@ -15,6 +15,8 @@ TID = '81' # from 余詩芸-1082W190
 element_SimulationPageBtn = '//*[text()="模 擬 正 式 "]//parent::div//parent::div[@class="service clearfix btn"][@onclick]'
 # to get tests qlevel when you need do this
 element_StartTestBtns = '//a[@class="btn btn-block btn-info"][@href]'
+# to get correct.aspx?Q_Type=3&Exam_U_Ans=BFFFF as correct3.aspx?Exam_U_Ans=BCFFF
+element_CheckAnsBtns = '//img[@src="images/modify_01.gif"]//parent::a[@href]'
 
 class requestLib():
     def __init__(self):
@@ -111,6 +113,9 @@ class requestLib():
             'rr': rr,
             'GeptSec': geptSec
         }
+        if len(answers.keys()) > 0:
+            for key in answers.keys():
+                data[key] = answers[key]
         resp = self.__request('post', onlineTestEndPoint + 'elective_gept_exam.aspx', data=data)
         html = etree.HTML(resp.text)
         return html
@@ -149,14 +154,20 @@ if __name__ == "__main__":
     # for in qlevelList.
     # start test for qlevel
     # https://easytest.ncut.edu.tw/online_test/etest/elective_gept_exam.aspx?GeptSec=start&qlevel=1001&TestType=3
+    print('start for qlevel=' + str(qlevelList[0]))
     page = client.get_testStart(qlevelList[0])
+    # skip/continue all elective_gept_exam.aspx to go to answer page. And check elective_gept_exam.aspx scenario
     for limit in range(10):
         geptSec = page.xpath('//*[@name="GeptSec"]/@value')
         if geptSec:
-            page = client.post_testNext(geptSec)
+            page = client.post_testNext(geptSec[0])
         else:
             break
-    
-    # skip/continue all elective_gept_exam.aspx to go to answer page. And check elective_gept_exam.aspx scenario
-    
-    # get all question-answer key value dict from answer page
+    ansPageUrlList = list()
+    elements = page.xpath(element_CheckAnsBtns)
+    for element in elements:
+        text = element.xpath('@href')[0]
+        ansNum = re.findall("correct.aspx\?Q_Type=(\d+)&", text)[0]
+        ansPageUrlList.append('correct{num}.aspx'.format(num=ansNum))
+    print(ansPageUrlList)
+    # get all question-answer key value dict from answer page from correct3.aspx page

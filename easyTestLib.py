@@ -70,7 +70,7 @@ class requestLib():
         Get simulation page html obj by tid(teacher id)
         '''
         params = {
-            "tid": tid
+            'tid': tid
         }
         resp = self.__request('get', onlineTestEndPoint + 'elective_simulation.aspx', params=params)
         html = etree.HTML(resp.text)
@@ -84,6 +84,36 @@ class requestLib():
         html = etree.HTML(resp.text)
         return html
 
+    def get_testStart(self, qlevel, testType='3'):
+        '''
+        Will include a test for current user. Re-start can include a new test
+        '''
+        params = {
+            'GeptSec': 'start',
+            'qlevel': qlevel,
+            'TestType': testType
+        }
+        resp = self.__request('get', onlineTestEndPoint + 'elective_gept_exam.aspx', params=params)
+        html = etree.HTML(resp.text)
+        return html
+
+    def post_testNext(self, geptSec, answers=dict(), rr=None):
+        '''
+        post answers and get next test page
+        '''
+        self.SESSION.headers.update({'content-type': 'application/x-www-form-urlencoded'})
+        if rr == None:
+            rr = self.SESSION.cookies['ASP.NET_SessionId']
+        data = {
+            'checkans': '1',
+            'timers': '8',
+            'timers2': '1192',
+            'rr': rr,
+            'GeptSec': geptSec
+        }
+        resp = self.__request('post', onlineTestEndPoint + 'elective_gept_exam.aspx', data=data)
+        html = etree.HTML(resp.text)
+        return html
 
     #------------------------------------------------------------------------------------
     # Function Zone
@@ -119,5 +149,14 @@ if __name__ == "__main__":
     # for in qlevelList.
     # start test for qlevel
     # https://easytest.ncut.edu.tw/online_test/etest/elective_gept_exam.aspx?GeptSec=start&qlevel=1001&TestType=3
+    page = client.get_testStart(qlevelList[0])
+    for limit in range(10):
+        geptSec = page.xpath('//*[@name="GeptSec"]/@value')
+        if geptSec:
+            page = client.post_testNext(geptSec)
+        else:
+            break
+    
     # skip/continue all elective_gept_exam.aspx to go to answer page. And check elective_gept_exam.aspx scenario
+    
     # get all question-answer key value dict from answer page

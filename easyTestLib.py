@@ -17,6 +17,15 @@ element_SimulationPageBtn = '//*[text()="模 擬 正 式 "]//parent::div//parent
 element_StartTestBtns = '//a[@class="btn btn-block btn-info"][@href]'
 # to get correct.aspx?Q_Type=3&Exam_U_Ans=BFFFF as correct3.aspx?Exam_U_Ans=BCFFF
 element_CheckAnsBtns = '//img[@src="images/modify_01.gif"]//parent::a[@href]'
+# check type for q-p  # Should find 1 element
+#element_CheckForQPtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td[1]/img[@src]'
+element_CheckForQPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td[1]/img[@src]'
+# check type for a-p  # Should find 2 element
+#element_CheckForAPtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td/table/tbody/tr[2]/td/img[@src]'
+element_CheckForAPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr[2]/td/img[@src]'
+# check type for a-t  # Should find 3 up element
+#element_CheckForATtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td/table/tbody/tr/td/text()/parent::td/input[@type="radio"]'
+element_CheckForATtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr/td/text()/parent::td/input[@type="radio"]'
 
 class requestLib():
     def __init__(self):
@@ -132,6 +141,23 @@ class requestLib():
     # Function Zone
     #------------------------------------------------------------------------------------
 
+    def generateAnswer(self, page):
+        ansObj = dict()
+        ansType = self.checkAnsType(page)
+        ansObj['type'] = ansType
+        return ansObj
+
+    def checkAnsType(self, page):
+        elements = page.xpath(element_CheckForQPtype)
+        if len(elements) == 1:
+            return 'q-p'
+        elements = page.xpath(element_CheckForAPtype)
+        if len(elements) == 2:
+            return 'a-p'
+        elements = page.xpath(element_CheckForATtype)
+        if len(elements) >= 3:
+            return 'a-t'
+
 
 if __name__ == "__main__":
     client = requestLib()
@@ -184,25 +210,45 @@ if __name__ == "__main__":
     # a-p = type3 = （聽力） 題目-無   選項-圖片
     # a-t = type4 = （閱讀） 題目-文字 選項-文字
     # a-t = type5 = （文章） 題目-大題 選項-文字
-    # [
-    #   {
-    #       "type": "q-p",
-    #       "img": "xxxxx.jpg",
-    #       "ans": "(C)"
-    #   },
-    #   {
-    #       "type": "a-p",
-    #       "img": "xxxxx-001b.jpg",
-    #   },
-    #   {
-    #       "type": "a-t",
-    #       "text": "Happy nice day.",
-    #   },
-    #   ....
-    # ]
     #
-    #
-    #
+    '''
+    [
+        {
+            "type": "q-p",
+            "data": [
+                {
+                    "img": "xxxxx.jpg",
+                    "ans": "(C)"
+                },
+                ....
+            ]
+        },
+        {
+            "type": "a-p",
+            "data": [
+                {
+                    "img": "xxxxx-001b.jpg"
+                },
+                ....
+            ]
+        },
+        {
+            "type": "a-t",
+            "data": [
+                {
+                    "text": "Happy nice day."
+                },
+                ....
+            ]
+        }
+    ]
+    '''
     #
     #################################################################### Note #######
-    page = client.get_ansPage(ansPageUrlList[0])  ## Need to for loop
+    answerScenario = list()
+    for ansPageUrl in ansPageUrlList:
+        print('get answer for ' + ansPageUrl)
+        page = client.get_ansPage(ansPageUrl)
+        answerObj = client.generateAnswer(page)
+        answerScenario.append(answerObj)
+    print(answerScenario)

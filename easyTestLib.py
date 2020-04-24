@@ -17,15 +17,17 @@ element_SimulationPageBtn = '//*[text()="模 擬 正 式 "]//parent::div//parent
 element_StartTestBtns = '//a[@class="btn btn-block btn-info"][@href]'
 # to get correct.aspx?Q_Type=3&Exam_U_Ans=BFFFF as correct3.aspx?Exam_U_Ans=BCFFF
 element_CheckAnsBtns = '//img[@src="images/modify_01.gif"]//parent::a[@href]'
+element_FieldsetMask = '//fieldset[{index}]/table'
 # check type for q-p  # Should find 1 element
-#element_CheckForQPtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td[1]/img[@src]'
 element_CheckForQPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td[1]/img[@src]'
+element_QPtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
+element_QPtypeQuestionImageUrl = '//table[@cellspacing="5"]//img[@src]/@src'
 # check type for a-p  # Should find 2 element
-#element_CheckForAPtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td/table/tbody/tr[2]/td/img[@src]'
 element_CheckForAPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr[2]/td/img[@src]'
+element_APtypeAnsImgUrl = '//font[contains(.,"正解")]/parent::td/img[@src]/@src'
 # check type for a-t  # Should find 3 up element
-#element_CheckForATtype = '//fieldset[1]/table/tbody/tr[3]/td/table/tbody/tr/td/table/tbody/tr/td/text()/parent::td/input[@type="radio"]'
-element_CheckForATtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr/td/text()/parent::td/input[@type="radio"]'
+element_CheckForATtype = '//fieldset[1]/table//input[@type="radio"]/parent::td/text()'
+element_ATtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
 
 class requestLib():
     def __init__(self):
@@ -145,6 +147,8 @@ class requestLib():
         ansObj = dict()
         ansType = self.checkAnsType(page)
         ansObj['type'] = ansType
+        ansDataList = self.getAnsData(page, ansType)
+        ansObj['data'] = ansDataList
         return ansObj
 
     def checkAnsType(self, page):
@@ -157,6 +161,40 @@ class requestLib():
         elements = page.xpath(element_CheckForATtype)
         if len(elements) >= 3:
             return 'a-t'
+
+    def getAnsData(self, page, ansType):
+        datas = list()
+        if ansType == 'q-p':
+            rangeCount = len(page.xpath(element_QPtypeAnsText))
+            for index in range(1, rangeCount + 1):
+                text = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QPtypeAnsText)[0]
+                imgUrl = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QPtypeQuestionImageUrl)[0]
+                tempObj = dict()
+                tempObj['img'] = imgUrl
+                tempObj['ans'] = re.findall("\((.*?)\) ", text)[0]
+                datas.append(tempObj)
+        if ansType == 'a-p':
+            rangeCount = len(page.xpath(element_APtypeAnsImgUrl))
+            for index in range(1, rangeCount + 1):
+                imgUrl = page.xpath(element_FieldsetMask.format(index=str(index)) + element_APtypeAnsImgUrl)[0]
+                tempObj = dict()
+                tempObj['img'] = imgUrl
+                datas.append(tempObj)
+        if ansType == 'a-t':
+            rangeCount = len(page.xpath(element_ATtypeAnsText))
+            for index in range(1, rangeCount + 1):
+                text = page.xpath(element_FieldsetMask.format(index=str(index)) + element_ATtypeAnsText)[0]
+                tempObj = dict()
+                tempObj['text'] = re.findall("\(.*?\) (.*)", text)[0]
+                datas.append(tempObj)
+        return datas
+
+    def doAns(self, page, ans):
+        if ans['type'] == 'q-p':
+            for data in ans['data']:
+                imgUrl = data['img']
+                q = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))
+                q = re.findall('Question (\d+).', q)
 
 
 if __name__ == "__main__":
@@ -251,4 +289,9 @@ if __name__ == "__main__":
         page = client.get_ansPage(ansPageUrl)
         answerObj = client.generateAnswer(page)
         answerScenario.append(answerObj)
-    print(answerScenario)
+    
+    page = client.get_testStart(qlevelList[0])
+    for scenario in answerScenario:
+        geptSec = page.xpath('//*[@name="GeptSec"]/@value')
+        answers = client.doAns(page, scenario)
+        page = client.post_testNext(geptSec[0], answers=answers)

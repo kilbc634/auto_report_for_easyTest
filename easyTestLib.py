@@ -190,11 +190,31 @@ class requestLib():
         return datas
 
     def doAns(self, page, ans):
+        output = dict()  # { 'q1': 'C' , 'q3': 'A', 'q2': 'B' , ....etc }
         if ans['type'] == 'q-p':
             for data in ans['data']:
                 imgUrl = data['img']
-                q = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))
-                q = re.findall('Question (\d+).', q)
+                a = data['ans']
+                qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
+                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                output[q] = a
+        if ans['type'] == 'a-p':
+            for data in ans['data']:
+                print(data)
+                imgUrl = data['img']
+                a = page.xpath('//img[@src="{}"]//parent::span//parent::td/input[@type="radio"]/@value'.format(imgUrl))[0]
+                qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
+                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                output[q] = a
+        if ans['type'] == 'a-t':
+            for data in ans['data']:
+                print(data)
+                targetText = data['text']
+                a = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]/@value'.format(t=targetText))[0]
+                qText = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
+                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                output[q] = a
+        return output
 
 
 if __name__ == "__main__":
@@ -256,7 +276,7 @@ if __name__ == "__main__":
             "data": [
                 {
                     "img": "xxxxx.jpg",
-                    "ans": "(C)"
+                    "ans": "C"
                 },
                 ....
             ]
@@ -293,5 +313,7 @@ if __name__ == "__main__":
     page = client.get_testStart(qlevelList[0])
     for scenario in answerScenario:
         geptSec = page.xpath('//*[@name="GeptSec"]/@value')
+        print('do ' + geptSec[0])
         answers = client.doAns(page, scenario)
+        print(answers)
         page = client.post_testNext(geptSec[0], answers=answers)

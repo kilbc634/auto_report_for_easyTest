@@ -3,6 +3,7 @@ import json
 import time
 from lxml import etree
 import re
+import traceback
 
 DEBUG = False
 VIEWSTATE = '/wEPDwUKLTM2OTg5MjUwNg9kFgRmDxYCHgtfIUl0ZW1Db3VudAIBFgJmD2QWAmYPFQcBMQQyMDE2ATgCMTBLRWFzeSB0ZXN057ea5LiK5a2457+S5ris6amX5bmz5Y+w5bey57aT5bu6572u5a6M5oiQ77yM5q2h6L+O6Li06LqN5L2/55So44CCATEQPHA+5aaC6aGM44CCPC9wPmQCAQ8WAh8AAgkWEmYPZBYCZg8VAyRDb3Vyc2VzL25ld190b2VpYy9zYW1wbGUuYXNweD90aWQ9MDABOxFUT0VJQ+aooeaTrOa4rOmpl2QCAQ9kFgJmDxUDJG9ubGluZV90ZXN0L2V0ZXN0L3NhbXBsZS5hc3B4P3RpZD0wMAE7GOWFqOawkeiLseaqouaooeaTrOa4rOmpl2QCAg9kFgJmDxUDDUNvdXJzZXMvdG9lZmwBOxVpQlTmiZjnpo/mqKHmk6zmuKzpqZdkAgMPZBYCZg8VAxBvbmxpbmVfdGVzdC9KTFBUATsQSkxQVOaooeaTrOa4rOmpl2QCBA9kFgJmDxUDEW9ubGluZV90ZXN0L2lvdmxzDGNvbG9yOmdyZWVuOxjoi7HmloflvbHpn7PkupLli5XoqrLnqItkAgUPZBYCZg8VAyNvbmxpbmVfdGVzdC93b3JkX2V4YW1pbmUvaW5kZXguYXNweAxjb2xvcjpncmVlbjsS5Zau5a2X5a2457+S57O757WxZAIGD2QWAmYPFQMXb25saW5lX3Rlc3QvamxwdF9jb3Vyc2UMY29sb3I6Z3JlZW47EuaXpeaWh+WtuOe/kuiqsueoi2QCBw9kFgJmDxUDEG9ubGluZV90ZXN0LzUwanAMY29sb3I6Z3JlZW47FeaXpeiqnuS6lOWNgemfs+iqsueoi2QCCA9kFgJmDxUDD2xlYXJuX21vcmUuYXNweAxjb2xvcjpncmVlbjsS5YW25LuW5a2457+S6LOH5rqQZGSx1S0XOJrB4vkGPlB3t7o6WMxeXgHdo15XaI9CihH18w=='
@@ -163,6 +164,48 @@ class requestLib():
             return 'a-t'
 
     def getAnsData(self, page, ansType):
+        # get all question-answer key value dict from answer page from correct3.aspx page
+        #################################################################### Note #######
+        # q-p = type1 = （聽力） 題目-圖片 選項-無      PS 選項順序不變
+        # a-t = type2 = （聽力） 題目-無   選項-文字
+        # a-p = type3 = （聽力） 題目-無   選項-圖片
+        # a-t = type4 = （閱讀） 題目-文字 選項-文字
+        # a-t = type5 = （文章） 題目-大題 選項-文字
+        #
+        '''
+        [
+            {
+                "type": "q-p",
+                "data": [
+                    {
+                        "img": "xxxxx.jpg",
+                        "ans": "C"
+                    },
+                    ....
+                ]
+            },
+            {
+                "type": "a-p",
+                "data": [
+                    {
+                        "img": "xxxxx-001b.jpg"
+                    },
+                    ....
+                ]
+            },
+            {
+                "type": "a-t",
+                "data": [
+                    {
+                        "text": "Happy nice day."
+                    },
+                    ....
+                ]
+            }
+        ]
+        '''
+        #
+        #################################################################### Note #######
         datas = list()
         if ansType == 'q-p':
             rangeCount = len(page.xpath(element_QPtypeAnsText))
@@ -191,29 +234,43 @@ class requestLib():
 
     def doAns(self, page, ans):
         output = dict()  # { 'q1': 'C' , 'q3': 'A', 'q2': 'B' , ....etc }
-        if ans['type'] == 'q-p':
-            for data in ans['data']:
-                imgUrl = data['img']
-                a = data['ans']
-                qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
-                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
-                output[q] = a
-        if ans['type'] == 'a-p':
-            for data in ans['data']:
-                print(data)
-                imgUrl = data['img']
-                a = page.xpath('//img[@src="{}"]//parent::span//parent::td/input[@type="radio"]/@value'.format(imgUrl))[0]
-                qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
-                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
-                output[q] = a
-        if ans['type'] == 'a-t':
-            for data in ans['data']:
-                print(data)
-                targetText = data['text']
-                a = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]/@value'.format(t=targetText))[0]
-                qText = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
-                q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
-                output[q] = a
+        try:
+            if ans['type'] == 'q-p':
+                for data in ans['data']:
+                    print(data)
+                    imgUrl = data['img']
+                    a = data['ans']
+                    qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
+                    q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    output[q] = a
+            if ans['type'] == 'a-p':
+                for data in ans['data']:
+                    print(data)
+                    imgUrl = data['img']
+                    a = page.xpath('//img[@src="{}"]//parent::span//parent::td/input[@type="radio"]/@value'.format(imgUrl))[0]
+                    qText = page.xpath('//img[@src="{}"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(imgUrl))[0]
+                    q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    output[q] = a
+            if ans['type'] == 'a-t':
+                for data in ans['data']:
+                    print(data)
+                    targetText = data['text']
+                    a = page.xpath('//span[contains(text(), "{t}")]//parent::td/input[@type="radio"]/@value'.format(t=targetText))
+                    if len(a) > 1:
+                        a = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]/@value'.format(t=targetText))[0]
+                        qText = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
+                        q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    else:
+                        a = a[0]
+                        qText = page.xpath('//span[contains(text(), "{t}")]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
+                        q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    output[q] = a
+        except:
+            with open('log.html', 'w') as f:
+                result = etree.tostring(page)
+                f.write(result.decode('utf-8'))
+            traceback.print_exc()
+            exit()
         return output
 
 
@@ -240,80 +297,43 @@ if __name__ == "__main__":
         text = element.xpath('@href')[0]
         qlevel = re.findall("javascript:set_level\((.*?)\);", text)[0]
         qlevelList.append(qlevel)
+    print('qlevels = ')
     print(qlevelList)
 
-    # TO DO
-    # for in qlevelList.
-    # start test for qlevel
-    # https://easytest.ncut.edu.tw/online_test/etest/elective_gept_exam.aspx?GeptSec=start&qlevel=1001&TestType=3
-    print('start for qlevel=' + str(qlevelList[0]))
-    page = client.get_testStart(qlevelList[0])  ## Need to for loop
-    # skip/continue all elective_gept_exam.aspx to go to answer page. And check elective_gept_exam.aspx scenario
-    for limit in range(10):
-        geptSec = page.xpath('//*[@name="GeptSec"]/@value')
-        if geptSec:
-            page = client.post_testNext(geptSec[0])
-        else:
-            break
-    ansPageUrlList = list()
-    elements = page.xpath(element_CheckAnsBtns)
-    for element in elements:
-        text = element.xpath('@href')[0]
-        ansNum = re.findall("correct.aspx\?Q_Type=(\d+)&", text)[0]
-        ansPageUrlList.append('correct{num}.aspx'.format(num=ansNum))
-    # get all question-answer key value dict from answer page from correct3.aspx page
-    #################################################################### Note #######
-    # q-p = type1 = （聽力） 題目-圖片 選項-無      PS 選項順序不變
-    # a-t = type2 = （聽力） 題目-無   選項-文字
-    # a-p = type3 = （聽力） 題目-無   選項-圖片
-    # a-t = type4 = （閱讀） 題目-文字 選項-文字
-    # a-t = type5 = （文章） 題目-大題 選項-文字
-    #
-    '''
-    [
-        {
-            "type": "q-p",
-            "data": [
-                {
-                    "img": "xxxxx.jpg",
-                    "ans": "C"
-                },
-                ....
-            ]
-        },
-        {
-            "type": "a-p",
-            "data": [
-                {
-                    "img": "xxxxx-001b.jpg"
-                },
-                ....
-            ]
-        },
-        {
-            "type": "a-t",
-            "data": [
-                {
-                    "text": "Happy nice day."
-                },
-                ....
-            ]
-        }
-    ]
-    '''
-    #
-    #################################################################### Note #######
-    answerScenario = list()
-    for ansPageUrl in ansPageUrlList:
-        print('get answer for ' + ansPageUrl)
-        page = client.get_ansPage(ansPageUrl)
-        answerObj = client.generateAnswer(page)
-        answerScenario.append(answerObj)
-    
-    page = client.get_testStart(qlevelList[0])
-    for scenario in answerScenario:
-        geptSec = page.xpath('//*[@name="GeptSec"]/@value')
-        print('do ' + geptSec[0])
-        answers = client.doAns(page, scenario)
-        print(answers)
-        page = client.post_testNext(geptSec[0], answers=answers)
+    for qlevel in qlevelList:
+        print('start for qlevel =' + str(qlevel))
+        page = client.get_testStart(qlevel)
+        # skip/continue all elective_gept_exam.aspx to go to answer page
+        for limit in range(10):
+            geptSec = page.xpath('//*[@name="GeptSec"]/@value')
+            if geptSec:
+                page = client.post_testNext(geptSec[0])
+            else:
+                break
+        # get all answer page url
+        ansPageUrlList = list()
+        elements = page.xpath(element_CheckAnsBtns)
+        for element in elements:
+            text = element.xpath('@href')[0]
+            ansNum = re.findall("correct.aspx\?Q_Type=(\d+)&", text)[0]
+            ansPageUrlList.append('correct{num}.aspx'.format(num=ansNum))
+        # go to all answer page to get answer date
+        answerScenario = list()
+        for ansPageUrl in ansPageUrlList:
+            print('get answer for ' + ansPageUrl)
+            page = client.get_ansPage(ansPageUrl)
+            answerObj = client.generateAnswer(page)
+            answerScenario.append(answerObj)
+        # re-start a test. use answer data to do test 
+        page = client.get_testStart(qlevel)
+        for scenario in answerScenario:
+            geptSec = page.xpath('//*[@name="GeptSec"]/@value')
+            print('do ' + geptSec[0])
+            answers = client.doAns(page, scenario)
+            print(answers)
+            page = client.post_testNext(geptSec[0], answers=answers)
+        # print point result
+        totalPointText = page.xpath('//font[contains(text(), "滿分")]/text()')[0]
+        myPointText = page.xpath('//font/strong[text()="總分"]/parent::font/parent::td/parent::tr/td[@align]/text()')[0]
+        print(totalPointText)
+        print('總分: ' + myPointText)

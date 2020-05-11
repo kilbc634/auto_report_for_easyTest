@@ -26,9 +26,13 @@ element_QPtypeQuestionImageUrl = '//table[@cellspacing="5"]//img[@src]/@src'
 # check type for a-p  # Should find 2 element
 element_CheckForAPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr[2]/td/img[@src]'
 element_APtypeAnsImgUrl = '//font[contains(.,"正解")]/parent::td/img[@src]/@src'
-# check type for a-t  # Should find 3 up element
-element_CheckForATtype = '//fieldset[1]/table//input[@type="radio"]/parent::td/text()'
+# check type for a-t  # Should find 3 up element, sound only
+element_CheckForATtype = '//fieldset[1]/table//audio[contains(@src,"sound/")][@type="audio/mp3"]/parent::*/parent::*/parent::table//input[@type="radio"]/parent::td/text()'
 element_ATtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
+# check type for q-t  # Should find 1 element
+element_CheckForQTtype = '//fieldset[1]/table/tr[3]/td/table//font[@color="#FFFFFF"]/text()'
+element_QTtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
+element_QTtypeQuestionText = '//font[@color="#FFFFFF"]/text()'
 
 class requestLib():
     def __init__(self):
@@ -162,6 +166,10 @@ class requestLib():
         elements = page.xpath(element_CheckForATtype)
         if len(elements) >= 3:
             return 'a-t'
+        elements = page.xpath(element_CheckForQTtype)
+        if len(elements) == 1:
+            return 'q-t'
+        return 'a-t'
 
     def getAnsData(self, page, ansType):
         # get all question-answer key value dict from answer page from correct3.aspx page
@@ -169,7 +177,7 @@ class requestLib():
         # q-p = type1 = （聽力） 題目-圖片 選項-無      PS 選項順序不變
         # a-t = type2 = （聽力） 題目-無   選項-文字
         # a-p = type3 = （聽力） 題目-無   選項-圖片
-        # a-t = type4 = （閱讀） 題目-文字 選項-文字
+        # q-t = type4 = （閱讀） 題目-文字 選項-文字
         # a-t = type5 = （文章） 題目-大題 選項-文字
         #
         '''
@@ -201,6 +209,16 @@ class requestLib():
                     },
                     ....
                 ]
+            },
+            {
+                "type": "q-t",
+                "data": [
+                    {
+                        "text": "We have to purchase a new laptop not only for Mary ___ also for Mindy.",
+                        "ans": "D"
+                    },
+                    ....
+                ]
             }
         ]
         '''
@@ -229,6 +247,15 @@ class requestLib():
                 text = page.xpath(element_FieldsetMask.format(index=str(index)) + element_ATtypeAnsText)[0]
                 tempObj = dict()
                 tempObj['text'] = re.findall("\(.*?\) (.*)", text)[0]
+                datas.append(tempObj)
+        if ansType == 'q-t':
+            rangeCount = len(page.xpath(element_QTtypeAnsText))
+            for index in range(1, rangeCount + 1):
+                aText = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QTtypeAnsText)[0]
+                qText = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QTtypeQuestionText)[0]
+                tempObj = dict()
+                tempObj['text'] = qText
+                tempObj['ans'] = re.findall("\((.*?)\) ", aText)[0]
                 datas.append(tempObj)
         return datas
 
@@ -264,6 +291,14 @@ class requestLib():
                         a = a[0]
                         qText = page.xpath('//span[contains(text(), "{t}")]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
                         q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    output[q] = a
+            if ans['type'] == 'q-t':
+                for data in ans['data']:
+                    print(data)
+                    text = data['text']
+                    a = data['ans']
+                    qText = page.xpath("//font[@color='#FFFFFF'][text()='{}']//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()".format(text))[0]
+                    q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
                     output[q] = a
         except:
             with open('log.html', 'w') as f:

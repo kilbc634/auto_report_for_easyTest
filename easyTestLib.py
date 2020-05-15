@@ -33,6 +33,27 @@ element_ATtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
 element_CheckForQTtype = '//fieldset[1]/table/tr[3]/td/table//font[@color="#FFFFFF"]/text()'
 element_QTtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
 element_QTtypeQuestionText = '//font[@color="#FFFFFF"]/text()'
+# extea
+element_scenarioItem = ''
+
+
+def string2xpathConcat(text):
+    tempStr = ""
+    resultList = list()
+    for index in range(len(text)):
+        char = text[index]
+        if char == '"':
+            tempStr = "'" + tempStr + char + "'"
+            resultList.append(tempStr)
+            tempStr = ''
+        elif char == "'":
+            tempStr = '"' + tempStr + char + '"'
+            resultList.append(tempStr)
+            tempStr = ''
+        else:
+            tempStr = tempStr + char
+    resultList.append('"' + tempStr + '"')
+    return ','.join(resultList)
 
 class requestLib():
     def __init__(self):
@@ -174,11 +195,11 @@ class requestLib():
     def getAnsData(self, page, ansType):
         # get all question-answer key value dict from answer page from correct3.aspx page
         #################################################################### Note #######
-        # q-p = type1 = （聽力） 題目-圖片 選項-無      PS 選項順序不變
-        # a-t = type2 = （聽力） 題目-無   選項-文字
-        # a-p = type3 = （聽力） 題目-無   選項-圖片
-        # q-t = type4 = （閱讀） 題目-文字 選項-文字
-        # a-t = type5 = （文章） 題目-大題 選項-文字
+        # q-p = type1 = （聽力） 題目-圖片         選項-無+播放器      PS 選項順序不變
+        # a-t = type2 = （聽力） 題目-無+播放器     選項-文字
+        # a-p = type3 = （聽力） 題目-無+播放器     選項-圖片
+        # q-t = type4 = （閱讀） 題目-文字          選項-文字
+        # a-t = type5 = （文章） 題目-大題+小題文字  選項-文字
         #
         '''
         [
@@ -297,7 +318,9 @@ class requestLib():
                     print(data)
                     text = data['text']
                     a = data['ans']
-                    qText = page.xpath("//font[@color='#FFFFFF'][text()='{}']//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()".format(text))[0]
+                    substrings = string2xpathConcat(text)
+                    print("//font[@color='#FFFFFF'][text()=concat({concatTexts},'')]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()".format(concatTexts=substrings))
+                    qText = page.xpath("""//font[@color='#FFFFFF'][text()=concat({concatTexts},'')]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()""".format(concatTexts=substrings))[0]
                     q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
                     output[q] = a
         except:

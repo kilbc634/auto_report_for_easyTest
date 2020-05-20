@@ -226,17 +226,13 @@ class requestLib():
                 "type": "a-t",
                 "data": [
                     {
-                        "text": "Happy nice day."
-                    },
-                    ....
-                ]
-            },
-            {
-                "type": "q-t",
-                "data": [
-                    {
-                        "text": "We have to purchase a new laptop not only for Mary ___ also for Mindy.",
-                        "ans": "D"
+                        "texts": [
+                            "Happy nice day.",
+                            "I'm so happy.",
+                            "temp text 1.",
+                            "and then?"
+                        ],
+                        "ans": "C"
                     },
                     ....
                 ]

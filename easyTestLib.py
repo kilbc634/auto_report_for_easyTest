@@ -19,6 +19,7 @@ element_StartTestBtns = '//a[@class="btn btn-block btn-info"][@href]'
 # to get correct.aspx?Q_Type=3&Exam_U_Ans=BFFFF as correct3.aspx?Exam_U_Ans=BCFFF
 element_CheckAnsBtns = '//img[@src="images/modify_01.gif"]//parent::a[@href]'
 element_FieldsetMask = '//fieldset[{index}]/table'
+element_QuestionMask = '(//form[@id="frmans"]/table[count(tr) >= 3])[{index}]'
 # check type for q-p  # Should find 1 element
 element_CheckForQPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td[1]/img[@src]'
 element_QPtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
@@ -27,14 +28,11 @@ element_QPtypeQuestionImageUrl = '//table[@cellspacing="5"]//img[@src]/@src'
 element_CheckForAPtype = '//fieldset[1]/table/tr[3]/td/table/tr/td/table/tr[2]/td/img[@src]'
 element_APtypeAnsImgUrl = '//font[contains(.,"正解")]/parent::td/img[@src]/@src'
 # check type for a-t  # Should find 3 up element, sound only
-element_CheckForATtype = '//fieldset[1]/table//audio[contains(@src,"sound/")][@type="audio/mp3"]/parent::*/parent::*/parent::table//input[@type="radio"]/parent::td/text()'
+element_CheckForATtype = '//fieldset[1]/table//input[@type="radio"]/parent::td/text()'
 element_ATtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
-# check type for q-t  # Should find 1 element
-element_CheckForQTtype = '//fieldset[1]/table/tr[3]/td/table//font[@color="#FFFFFF"]/text()'
-element_QTtypeAnsText = '//font[contains(.,"正解")]/parent::td/text()'
-element_QTtypeQuestionText = '//font[@color="#FFFFFF"]/text()'
-# extea
-element_scenarioItem = ''
+element_ATtypeSelectsText = '//input[@type="radio"]/parent::td/text()'
+element_ATtypeQuestionText = '//span[@class="label label-info"]/text()'
+element_ATtypeSelectsTextForQuestion = '//input[@type="radio"]/parent::td/span/text()'
 
 
 def string2xpathConcat(text):
@@ -55,6 +53,16 @@ def string2xpathConcat(text):
     resultList.append('"' + tempStr + '"')
     return ','.join(resultList)
 
+def checkListAsEqual(checkList, expectedList):
+    if len(expectedList) != len(checkList):
+        return False
+    for text in checkList:
+        if text in expectedList:
+            pass
+        else:
+            return False
+    return True
+
 class requestLib():
     def __init__(self):
         self.URL = 'https://easytest.ncut.edu.tw/'
@@ -62,6 +70,7 @@ class requestLib():
         self.SESSION.headers.update({
             'authority': 'easytest.ncut.edu.tw'
         })
+        self.nowPage = ''
 
     def __request(self, method, node='', **kwargs):
         resp = self.SESSION.request(method, self.URL + node, **kwargs)
@@ -72,6 +81,11 @@ class requestLib():
             except (UnicodeDecodeError, UnicodeDecodeError, UnicodeError):
                 print('[WARNING] Unknow unicode error from response')
         return resp
+
+    def __loadHtml(self, text):
+        self.nowPage = text
+        html = etree.HTML(text)
+        return html
 
     #------------------------------------------------------------------------------------
     # Requests Zone
@@ -100,7 +114,7 @@ class requestLib():
             'Action': 'MLogin'
         }
         resp = self.__request('post', 'index.aspx', data=data)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         checkText = html.xpath('//a/span[@class="glyphicon glyphicon-user"]/parent::a/text()[1]')
         return checkText[0]
 
@@ -112,7 +126,7 @@ class requestLib():
             'tid': tid
         }
         resp = self.__request('get', onlineTestEndPoint + 'elective_simulation.aspx', params=params)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         return html
 
     def get_testsOverviewPage(self, pageName):
@@ -120,7 +134,7 @@ class requestLib():
         Get tests overview page. You can find all qlevel of test on this page
         '''
         resp = self.__request('get', onlineTestEndPoint + pageName)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         return html
 
     def get_testStart(self, qlevel, testType='3'):
@@ -133,7 +147,7 @@ class requestLib():
             'TestType': testType
         }
         resp = self.__request('get', onlineTestEndPoint + 'elective_gept_exam.aspx', params=params)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         return html
 
     def post_testNext(self, geptSec, answers=dict(), rr=None):
@@ -154,7 +168,7 @@ class requestLib():
             for key in answers.keys():
                 data[key] = answers[key]
         resp = self.__request('post', onlineTestEndPoint + 'elective_gept_exam.aspx', data=data)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         return html
 
     def get_ansPage(self, pageName):
@@ -162,7 +176,7 @@ class requestLib():
         Get answer page by page name url
         '''
         resp = self.__request('get', onlineTestEndPoint + pageName)
-        html = etree.HTML(resp.text)
+        html = self.__loadHtml(resp.text)
         return html
 
     #------------------------------------------------------------------------------------
@@ -187,9 +201,6 @@ class requestLib():
         elements = page.xpath(element_CheckForATtype)
         if len(elements) >= 3:
             return 'a-t'
-        elements = page.xpath(element_CheckForQTtype)
-        if len(elements) == 1:
-            return 'q-t'
         return 'a-t'
 
     def getAnsData(self, page, ansType):
@@ -261,18 +272,14 @@ class requestLib():
         if ansType == 'a-t':
             rangeCount = len(page.xpath(element_ATtypeAnsText))
             for index in range(1, rangeCount + 1):
-                text = page.xpath(element_FieldsetMask.format(index=str(index)) + element_ATtypeAnsText)[0]
+                textAns = page.xpath(element_FieldsetMask.format(index=str(index)) + element_ATtypeAnsText)[0]
+                textSelects = page.xpath(element_FieldsetMask.format(index=str(index)) + element_ATtypeSelectsText)
                 tempObj = dict()
-                tempObj['text'] = re.findall("\(.*?\) (.*)", text)[0]
-                datas.append(tempObj)
-        if ansType == 'q-t':
-            rangeCount = len(page.xpath(element_QTtypeAnsText))
-            for index in range(1, rangeCount + 1):
-                aText = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QTtypeAnsText)[0]
-                qText = page.xpath(element_FieldsetMask.format(index=str(index)) + element_QTtypeQuestionText)[0]
-                tempObj = dict()
-                tempObj['text'] = qText
-                tempObj['ans'] = re.findall("\((.*?)\) ", aText)[0]
+                tempObj['ans'] = re.findall("\((.*?)\) ", textAns)[0]
+                tempList = list()
+                for textSelect in textSelects:
+                    tempList.append(re.findall("\(.*?\) (.*)", textSelect)[0])
+                tempObj['texts'] = tempList
                 datas.append(tempObj)
         return datas
 
@@ -298,31 +305,32 @@ class requestLib():
             if ans['type'] == 'a-t':
                 for data in ans['data']:
                     print(data)
-                    targetText = data['text']
-                    a = page.xpath('//span[contains(text(), "{t}")]//parent::td/input[@type="radio"]/@value'.format(t=targetText))
-                    if len(a) > 1:
-                        a = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]/@value'.format(t=targetText))[0]
-                        qText = page.xpath('//span[substring(text(), string-length(text()) - string-length(") {t}") + 1) = ") {t}"]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
-                        q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
-                    else:
-                        a = a[0]
-                        qText = page.xpath('//span[contains(text(), "{t}")]//parent::td/input[@type="radio"]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class="label label-info"]/text()'.format(t=targetText))[0]
-                        q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
-                    output[q] = a
-            if ans['type'] == 'q-t':
-                for data in ans['data']:
-                    print(data)
-                    text = data['text']
+                    targetTexts = data['texts']
                     a = data['ans']
-                    substrings = string2xpathConcat(text)
-                    print("//font[@color='#FFFFFF'][text()=concat({concatTexts},'')]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()".format(concatTexts=substrings))
-                    qText = page.xpath("""//font[@color='#FFFFFF'][text()=concat({concatTexts},'')]//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//parent::*//span[@class='label label-info']/text()""".format(concatTexts=substrings))[0]
-                    q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                    rangeCount = len(page.xpath(element_ATtypeQuestionText))
+                    print('[INFO] Start to check a-t mode')
+                    for index in range(1, rangeCount + 1):
+                        print('[INFO] Preview question for Index = ' + str(index) )
+                        texts = page.xpath(element_QuestionMask.format(index=str(index)) + element_ATtypeSelectsTextForQuestion)
+                        print(texts)
+                        checkTexts = list()
+                        for t in texts:
+                            checkTexts.append(re.findall('\(.*?\) (.*)', t)[0])
+                        if checkListAsEqual(checkTexts, targetTexts):
+                            print('[INFO] Matching answer text for Index = '+ str(index) )
+                            print('------------------------------------------')
+                            print(targetTexts)
+                            print(checkTexts)
+                            print('------------------------------------------')
+                            qText = page.xpath(element_QuestionMask.format(index=str(index)) + element_ATtypeQuestionText)[0]
+                            q = 'q{num}'.format(num=re.findall('Question.*?(\d+).', qText)[0])
+                            break
                     output[q] = a
+                    del q
         except:
             with open('log.html', 'w') as f:
-                result = etree.tostring(page)
-                f.write(result.decode('utf-8'))
+                f.truncate(0)
+                f.write(self.nowPage)
             traceback.print_exc()
             exit()
         return output

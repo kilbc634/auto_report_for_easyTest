@@ -10,7 +10,7 @@ VIEWSTATE = '/wEPDwUKLTM2OTg5MjUwNg9kFgRmDxYCHgtfIUl0ZW1Db3VudAIBFgJmD2QWAmYPFQc
 VIEWSTATEGENERATOR = '90059987'
 EVENTVALIDATION = '/wEdAARQ6fCua7Qf37k3ap59rCnAvTa/V+SDY9mI55q1kXnays9ldyoHj2aNupFanuLi5LBMirLtENmb6ez0f81TBHESVgOaWvUDhC22tXuDDoa4fJC9V1V2db5peDTWecDXbKw='
 onlineTestEndPoint = 'online_test/etest/'
-TID = '81' # from 余詩芸-1082W190
+TID = '85' # from 余詩芸-1082W190
 
 # to get simulation page url
 element_SimulationPageBtn = '//*[text()="模 擬 正 式 "]//parent::div//parent::div[@class="service clearfix btn"][@onclick]'
@@ -34,24 +34,6 @@ element_ATtypeSelectsText = '//input[@type="radio"]/parent::td/text()'
 element_ATtypeQuestionText = '//span[@class="label label-info"]/text()'
 element_ATtypeSelectsTextForQuestion = '//input[@type="radio"]/parent::td/span/text()'
 
-
-def string2xpathConcat(text):
-    tempStr = ""
-    resultList = list()
-    for index in range(len(text)):
-        char = text[index]
-        if char == '"':
-            tempStr = "'" + tempStr + char + "'"
-            resultList.append(tempStr)
-            tempStr = ''
-        elif char == "'":
-            tempStr = '"' + tempStr + char + '"'
-            resultList.append(tempStr)
-            tempStr = ''
-        else:
-            tempStr = tempStr + char
-    resultList.append('"' + tempStr + '"')
-    return ','.join(resultList)
 
 def checkListAsEqual(checkList, expectedList):
     if len(expectedList) != len(checkList):
